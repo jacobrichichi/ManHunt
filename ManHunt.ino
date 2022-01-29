@@ -7,6 +7,8 @@ boolean setUp = true;
 boolean huntersSetup = false;
 boolean hidersSetup = false;
 boolean gameTime = false;
+boolean huntersTurn = false;
+boolean hidersTurn = false;
 
 int possibles = 0;
 int numHunters = 0;
@@ -15,6 +17,17 @@ int currentRole = 0;
 int possiblesHiders = 0;
 int numHiders = 0;
 int currentRoleHiders = 0;
+
+int hidersInSpot = 0;
+int huntersInSpot = 0;
+int hunterSelected = false;
+boolean movementMade = false;
+boolean possibleFlashlight = false;
+boolean flashlightSpot = false;
+int numFlashlights = 0;
+int huntersFinished = 0;
+boolean possibleMovement = false;
+
 
 Timer timer;
 
@@ -45,7 +58,7 @@ void loop() {
 
   else if (huntersSetup) {
     if (buttonPressed()) {
-      
+
       // If there was no possible hunter in this spot, tell all other blinks of new possible spot
       if (currentRole == 0) {
 
@@ -58,7 +71,7 @@ void loop() {
       // If possible hunter here, set this spot as decided hunter start point
       else if (currentRole == 1) {
         currentRole++;
-        
+
         numHunters++;
         setColor(RED);
         setValueSentOnAllFaces(25 + numHunters);
@@ -85,7 +98,7 @@ void loop() {
             }
 
             else if (valOnFace > 25 && valOnFace < 35) {
-              if(valOnFace > numHunters + 25){
+              if (valOnFace > numHunters + 25) {
                 sp.print("increase hunters");
                 numHunters++;
                 setValueSentOnAllFaces(valOnFace);
@@ -97,6 +110,10 @@ void loop() {
 
     }
     if (numHunters == 2) {
+      if (currentRole == 2) {
+        huntersInSpot = 1;
+      }
+
       huntersSetup = false;
       hidersSetup = true;
     }
@@ -104,7 +121,7 @@ void loop() {
 
   if (hidersSetup) {
     if (buttonPressed()) {
-      
+
       // If there was no possible hider in this spot, tell all other blinks of new possible spot
       // Also, if this was a hunters chosen position, do not let any logic play out
       if (currentRole != 2 && currentRoleHiders == 0) {
@@ -119,7 +136,7 @@ void loop() {
       // If this was hunters chosen spot, do not let spot be chosen by hider
       else if (currentRole != 2 && currentRoleHiders == 1) {
         currentRoleHiders++;
-        
+
         numHiders++;
         setColor(BLUE);
         setValueSentOnAllFaces(45 + numHiders);
@@ -133,7 +150,7 @@ void loop() {
         if (!isValueReceivedOnFaceExpired(i)) {
           if (didValueOnFaceChange(i)) {
             int valOnFace = getLastValueReceivedOnFace(i);
-            // Less then 25 means that new possible spot is chosen 
+            // Less then 25 means that new possible spot is chosen
             if (valOnFace < 25 && currentRoleHiders != 2) {
 
               // This doesnt let one action initiate multiple responses on the same blink
@@ -142,7 +159,7 @@ void loop() {
                 sp.print(currentRoleHiders);
 
                 // Only if this is not chosen hunter spot will role and color change
-                if(currentRole != 2){
+                if (currentRole != 2) {
                   currentRoleHiders = 0;
                   setColor(GREEN);
                 }
@@ -153,8 +170,8 @@ void loop() {
               }
             }
 
-            else if (valOnFace >45 && valOnFace < 60) {
-              if(valOnFace > numHiders + 45){
+            else if (valOnFace > 45 && valOnFace < 60) {
+              if (valOnFace > numHiders + 45) {
                 sp.print("increase hiders");
                 numHiders++;
                 setValueSentOnAllFaces(valOnFace);
@@ -166,13 +183,145 @@ void loop() {
 
     }
     if (numHiders == 2) {
+      if (currentRoleHiders == 2) {
+        hidersInSpot = 1;
+      }
       hidersSetup = false;
-      gameTime = true;
+      huntersTurn = true;
     }
   }
 
-  if(gameTime){
-   setColor(ORANGE); 
+  if (huntersTurn) {
+
+    if (huntersInSpot == 0 && flashlightSpot == 0 && !possibleMovement && !possibleFlashlight) {
+      setColor(GREEN);
+    }
+    else if (huntersInSpot > 0) {
+      setColor(RED);
+    }
+    else if (flashlightSpot == 1) {
+      setColor(WHITE);
+    }
+    else if (flashlightSpot == 2) {
+      setColor(BLUE);
+    }
+
+    else if(possibleFlashlight){
+      setColor(MAGENTA);  
+    }
+    else if(possibleMovement){
+      setColor(ORANGE);  
+    }
+
+    if (buttonPressed()) {
+      
+      // Movement already decided?
+      if (movementMade) {
+        // Is this a possible flashlight blink?
+        if (possibleFlashlight) {
+          // Set this spot as flashlight
+          flashlightSpot = true;
+          numFlashlights++;
+          setColor(WHITE);
+
+          // Tell everybody else a flashlight has been added
+          setValueSentOnAllFaces(4);
+        }
+      }
+      else {
+        // Selecting / deselecting hunter for movement
+        if (huntersInSpot > 0 && !hunterSelected) {
+          hunterSelected = true;
+          setValueSentOnAllFaces(0);
+          
+        }
+
+        else if (huntersInSpot > 0 && hunterSelected) {
+          hunterSelected = false;
+          setValueSentOnAllFaces(1);
+          
+        }
+
+        // If this square is a legal move, make it and tell everyone else a move has been made
+        else if(huntersInSpot == 0 && possibleMovement){
+             sp.print("sjf");
+             huntersInSpot++;
+             movementMade = true;
+             setValueSentOnAllFaces(3);
+             
+        }
+      }
+
+      // Need to figure out
+
+    }
+
+    FOREACH_FACE(f){
+        if (!isValueReceivedOnFaceExpired(f)) {
+          if (didValueOnFaceChange(f)) {
+            int valOnFace = getLastValueReceivedOnFace(f);
+            
+            if(valOnFace == 0){
+                sp.print("possibleMovement");
+                possibleMovement = true;
+                setColor(ORANGE);
+            }
+            
+            else if(valOnFace == 1){
+                possibleMovement = false;
+                setColor(GREEN);
+            }
+
+            else if(valOnFace == 2){
+                possibleFlashlight = true;
+            }
+            else if(valOnFace == 3){
+              sp.print("Possible flashlight");
+              if(hunterSelected){
+                 huntersInSpot = 0;
+                 setValueSentOnAllFaces(6);
+              }
+              possibleMovement = false;
+              movementMade = true;
+
+              possibleFlashlight = true;
+              setColor(MAGENTA);
+              
+              
+            }
+
+            else if(valOnFace == 4){
+              numFlashlights++;
+              setValueSentOnAllFaces(4);  
+            }
+
+            else if(valOnFace == 5){
+              huntersFinished++;
+              numFlashlights = 0;  
+            }
+
+            else if(valOnFace == 6){
+              possibleMovement = false;  
+            }
+          }
+        }
+    }
+
+    if(numFlashlights == 2){
+      huntersFinished++;
+      numFlashlights = 0; 
+
+      //setValueSentOnAllFaces(5);
+    }
+    if(huntersFinished == 2){
+        huntersTurn = false;
+        hidersTurn = true;  
+    }
+
+    
+  }
+  if (hidersTurn) {
+    
   }
 }
 
