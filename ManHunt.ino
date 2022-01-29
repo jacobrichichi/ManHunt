@@ -7,6 +7,7 @@ ServicePortSerial sp;
 boolean huntersSetup = false;
 boolean hidersSetup = false;
 
+int possibles = 0;
 int numHunters = 0;
 int currentRole = 0;
 boolean setUp = true;
@@ -24,12 +25,11 @@ void setup() {
 
 
 void loop() {
-  sp.print("hi");
 
+  // Set up phase creates a completely green board
   if (setUp) {
-    timer.set(1);
     for (int i = 0; i < 6; i++) {
-      if (didValueOnFaceChange(i) && getLastValueReceivedOnFace(i) == 4) {
+      if (didValueOnFaceChange(i) && getLastValueReceivedOnFace(i) == 35) {
         wipeBoard(0, 255, 0);
         setUp = false;
         huntersSetup = true;
@@ -41,42 +41,56 @@ void loop() {
 
   else if (huntersSetup) {
     if (buttonPressed()) {
+      
+      // If there was no possible hunter in this spot, tell all other blinks of new possible spot
       if (currentRole == 0) {
-        currentRole++;
-        setColor(MAGENTA);
-        setValueSentOnAllFaces(currentRole);
-        timer.set(300);
 
+        currentRole += 1;
+        setColor(MAGENTA);
+        possibles += 1;
+        setValueSentOnAllFaces(possibles);
       }
+
+      // If possible hunter here, set this spot as decided hunter start point
       else if (currentRole == 1) {
         currentRole++;
+        
+        numHunters++;
         setColor(RED);
-        setValueSentOnAllFaces(currentRole);
+        setValueSentOnAllFaces(25 + numHunters);
 
-        timer.set(300);
       }
     }
 
-    else if(timer.isExpired()) {
+    else {
       for (int i = 0; i < 6; i++) {
-        if (didValueOnFaceChange(i)) {
-          int valOnFace = getLastValueReceivedOnFace(i);
 
-          if (valOnFace == 1 && currentRole != 2) {
-            currentRole = 0;
-            setColor(GREEN);
-            setValueSentOnAllFaces(1);
-            timer.set(300);
+        if (!isValueReceivedOnFaceExpired(i)) {
+          if (didValueOnFaceChange(i)) {
+            int valOnFace = getLastValueReceivedOnFace(i);
+
+            if (valOnFace < 25 && currentRole != 2) {
+              if (possibles != valOnFace) {
+                sp.print("changing");
+                sp.print(currentRole);
+                currentRole = 0;
+                setColor(GREEN);
+                setValueSentOnAllFaces(valOnFace);
+                possibles++;
+              }
+            }
+
+            else if (valOnFace > 25 && valOnFace < 35) {
+              if(valOnFace > numHunters + 25){
+                sp.print("increase hunters");
+                numHunters++;
+                setValueSentOnAllFaces(valOnFace);
+              }
+            }
           }
-
-          else if (valOnFace == 2) {
-            numHunters++;
-            setValueSentOnAllFaces(2);
-            timer.set(300);
-          }
-
         }
       }
+
     }
     if (numHunters == 2) {
       huntersSetup = false;
@@ -84,13 +98,13 @@ void loop() {
     }
   }
 
-  if(hidersSetup){
+  if (hidersSetup) {
     setColor(ORANGE);
-    }
+  }
 }
 
 
 void wipeBoard(int red, int green, int blue) {
   setColor(makeColorRGB(red, green, blue));
-  setValueSentOnAllFaces(4);
+  setValueSentOnAllFaces(35);
 }
