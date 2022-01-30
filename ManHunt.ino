@@ -3,6 +3,8 @@
 
 //ServicePortSerial sp;
 
+#define PULSE_LENGTH 500
+
 boolean setUp = true;
 boolean huntersSetup = false;
 boolean hidersSetup = false;
@@ -218,10 +220,26 @@ void loop() {
     }
 
     else if(possibleFlashlight){
-      setColor(MAGENTA);  
+       int pulseProgress = millis() % PULSE_LENGTH;
+
+      //transform that progress to a byte (0-255)
+      byte pulseMapped = map(pulseProgress, 0, PULSE_LENGTH, 0, 255);
+
+      //transform that byte with sin
+      byte dimness = sin8_C(pulseMapped);
+      
+      setColor(makeColorHSB(172, 0, dimness));   
     }
     else if(possibleMovement){
-      setColor(ORANGE);  
+      int pulseProgress = millis() % PULSE_LENGTH;
+
+      //transform that progress to a byte (0-255)
+      byte pulseMapped = map(pulseProgress, 0, PULSE_LENGTH, 0, 255);
+
+      //transform that byte with sin
+      byte dimness = sin8_C(pulseMapped);
+      
+      setColor(makeColorHSB(30, 255, dimness)); 
     }
 
     if (buttonPressed()) {
@@ -232,6 +250,7 @@ void loop() {
         if (possibleFlashlight) {
           // Set this spot as flashlight
           flashlightSpot = true;
+          possibleFlashlight = false;
           setColor(WHITE);
 
           // Tell everybody else a flashlight has been added
@@ -339,7 +358,7 @@ void loop() {
               movementMade = true;
 
 
-              if(huntersInSpot == 0){
+              if(huntersInSpot == 0 && !flashlightSpot){
                 possibleFlashlight = true;
                 setColor(MAGENTA);
               }
@@ -484,10 +503,18 @@ void loop() {
     }
 
     if(buttonPressed()){
+
+      
       if(hidersInSpot > 0 && !anyHidersChoosing){
         hiderSelected = true; //note that this is a selected hider
         anyHidersChoosing = true;
         setValueSentOnAllFaces(0);  
+      }
+
+      else if(hidersInSpot > 0 && hiderSelected){
+        hiderSelected = false;
+        anyHidersChoosing = false;
+        setValueSentOnAllFaces(60);  
       }
 
       else if(possibleHiderMovement){
@@ -512,14 +539,18 @@ void loop() {
           if (didValueOnFaceChange(f)) {
             int valOnFace = getLastValueReceivedOnFace(f);
 
-            if(valOnFace == 0 && hidersInSpot == 0 && huntersInSpot == 0){
-                possibleHiderMovement = true;
+            if(valOnFace == 0){
+              if(hidersInSpot == 0 && huntersInSpot == 0){
+                  possibleHiderMovement = true;
+             
+                }
                 anyHidersChoosing = true;
                 setValueSentOnAllFaces(1);
             }
 
             if(valOnFace == 1){
               anyHidersChoosing = true;  
+              setValueSentOnAllFaces(1);
             }
 
             if(valOnFace == 2){
@@ -559,6 +590,12 @@ void loop() {
 
                 setValueSentOnAllFaces(20);
 
+            }
+
+            if(valOnFace == 60){
+              possibleHiderMovement = false;
+              anyHidersChoosing = false;
+              setValueSentOnAllFaces(60);  
             }
 
             
