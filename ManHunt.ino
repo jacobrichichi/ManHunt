@@ -1,7 +1,7 @@
 
-#include "Serial.h"
+//#include "Serial.h"
 
-ServicePortSerial sp;
+//ServicePortSerial sp;
 
 boolean setUp = true;
 boolean huntersSetup = false;
@@ -9,6 +9,8 @@ boolean hidersSetup = false;
 boolean gameTime = false;
 boolean huntersTurn = false;
 boolean hidersTurn = false;
+boolean inbetweenTurns = false;
+boolean finishingTurn = false;
 
 int possibles = 0;
 int numHunters = 0;
@@ -27,13 +29,22 @@ boolean flashlightSpot = false;
 int numFlashlights = 0;
 int huntersFinished = 0;
 boolean possibleMovement = false;
+int flashlightPropagation = 4;
+boolean flashlightState = true;
+int hidersCaught = 0;
+boolean anyHunterChoosing = false;
+boolean possibleHiderMovement = false;
+boolean anyHidersChoosing = false;
+boolean hiderSelected = false;
+int hidersMoved = 2;
+int turnsLeft = 5;
 
 
 Timer timer;
 
 void setup() {
 
-  sp.begin();
+  //sp.begin();
 
   wipeBoard(0, 255, 0);
   setUp = false;
@@ -88,8 +99,8 @@ void loop() {
 
             if (valOnFace < 25 && currentRole != 2) {
               if (possibles != valOnFace) {
-                sp.print("changing");
-                sp.print(currentRole);
+                //sp.print("changing");
+                //sp.print(currentRole);
                 currentRole = 0;
                 setColor(GREEN);
                 setValueSentOnAllFaces(valOnFace);
@@ -99,7 +110,7 @@ void loop() {
 
             else if (valOnFace > 25 && valOnFace < 35) {
               if (valOnFace > numHunters + 25) {
-                sp.print("increase hunters");
+                //sp.print("increase hunters");
                 numHunters++;
                 setValueSentOnAllFaces(valOnFace);
               }
@@ -155,8 +166,8 @@ void loop() {
 
               // This doesnt let one action initiate multiple responses on the same blink
               if (possiblesHiders != valOnFace) {
-                sp.print("changing");
-                sp.print(currentRoleHiders);
+               // sp.print("changing");
+               // sp.print(currentRoleHiders);
 
                 // Only if this is not chosen hunter spot will role and color change
                 if (currentRole != 2) {
@@ -172,7 +183,7 @@ void loop() {
 
             else if (valOnFace > 45 && valOnFace < 60) {
               if (valOnFace > numHiders + 45) {
-                sp.print("increase hiders");
+               // sp.print("increase hiders");
                 numHiders++;
                 setValueSentOnAllFaces(valOnFace);
               }
@@ -221,18 +232,53 @@ void loop() {
         if (possibleFlashlight) {
           // Set this spot as flashlight
           flashlightSpot = true;
-          numFlashlights++;
           setColor(WHITE);
 
           // Tell everybody else a flashlight has been added
-          setValueSentOnAllFaces(4);
+
+          if(numFlashlights == 0 && huntersFinished == 0){
+          //  sp.print("00");
+            numFlashlights = 1;
+            setValueSentOnAllFaces(7);  
+          }
+          else if (numFlashlights == 1 && huntersFinished == 0){
+           //   sp.print("10");
+              numFlashlights = 0;
+              huntersFinished = 1;
+              movementMade = false;
+              setValueSentOnAllFaces(8);  
+          }
+          else if(numFlashlights == 0 && huntersFinished == 1){
+            //  sp.print("01");
+              numFlashlights = 1;
+              setValueSentOnAllFaces(9);
+          }
+
+          
+          else if(numFlashlights == 1 && huntersFinished == 1){
+            //sp.print("11");
+            setValueSentOnAllFaces(10);
+            possibleMovement = false;
+            possibleFlashlight = false;
+
+            huntersTurn = false;
+            inbetweenTurns = true; 
+          }
+          
+
+          flashlightState = false;
         }
       }
       else {
         // Selecting / deselecting hunter for movement
         if (huntersInSpot > 0 && !hunterSelected) {
-          hunterSelected = true;
-          setValueSentOnAllFaces(0);
+
+          if(!anyHunterChoosing){
+            hunterSelected = true;
+            anyHunterChoosing = true;
+            setValueSentOnAllFaces(0);
+          }
+          
           
         }
 
@@ -244,11 +290,9 @@ void loop() {
 
         // If this square is a legal move, make it and tell everyone else a move has been made
         else if(huntersInSpot == 0 && possibleMovement){
-             sp.print("sjf");
-             huntersInSpot++;
+             huntersInSpot = 1;
              movementMade = true;
-             setValueSentOnAllFaces(3);
-             
+             setValueSentOnAllFaces(3); 
         }
       }
 
@@ -261,22 +305,32 @@ void loop() {
           if (didValueOnFaceChange(f)) {
             int valOnFace = getLastValueReceivedOnFace(f);
             
-            if(valOnFace == 0){
-                sp.print("possibleMovement");
-                possibleMovement = true;
-                setColor(ORANGE);
+            if(valOnFace == 11){
+              anyHunterChoosing = true;
             }
             
+            if(valOnFace == 12){
+              anyHunterChoosing = false; 
+            }
+            
+            if(valOnFace == 0 && huntersInSpot == 0){
+                
+                possibleMovement = true;
+                setValueSentOnAllFaces(11);
+                setColor(ORANGE);
+            }
+
+            
             else if(valOnFace == 1){
+                setValueSentOnAllFaces(12);
                 possibleMovement = false;
                 setColor(GREEN);
             }
 
-            else if(valOnFace == 2){
+            else if(valOnFace == 2 && huntersInSpot == 0){
                 possibleFlashlight = true;
             }
             else if(valOnFace == 3){
-              sp.print("Possible flashlight");
               if(hunterSelected){
                  huntersInSpot = 0;
                  setValueSentOnAllFaces(6);
@@ -284,18 +338,18 @@ void loop() {
               possibleMovement = false;
               movementMade = true;
 
-              possibleFlashlight = true;
-              setColor(MAGENTA);
-              
-              
-            }
 
-            else if(valOnFace == 4){
-              numFlashlights++;
-              setValueSentOnAllFaces(4);  
+              if(huntersInSpot == 0){
+                possibleFlashlight = true;
+                setColor(MAGENTA);
+              }
+              
+              
+              
             }
 
             else if(valOnFace == 5){
+      
               huntersFinished++;
               numFlashlights = 0;  
             }
@@ -303,25 +357,226 @@ void loop() {
             else if(valOnFace == 6){
               possibleMovement = false;  
             }
+
+            else if(valOnFace == 7){
+
+              //sp.print("Val is 7");
+              numFlashlights = 1;
+              setValueSentOnAllFaces(7); 
+               
+            }
+            else if(valOnFace == 8){
+            //  sp.println("val is 8");
+              numFlashlights = 0;
+              huntersFinished = 1;
+              hunterSelected = false;
+              movementMade = false;
+
+              possibleMovement = false;
+              possibleFlashlight = false;
+              anyHunterChoosing = false;
+              
+              setValueSentOnAllFaces(8); 
+            }
+
+            else if(valOnFace == 9){
+            //  sp.println("val is 9");
+              numFlashlights = 1;        
+              
+              setValueSentOnAllFaces(9); 
+            }
+            else if(valOnFace == 10){
+           //   sp.println("val is 10");
+              numFlashlights = 0;
+              huntersFinished = 2;
+
+              possibleMovement = false;
+              possibleFlashlight = false;
+          //    sp.println("hunt turn over");
+              huntersTurn = false;
+              inbetweenTurns = true; 
+        
+              
+              setValueSentOnAllFaces(10); 
+            }
           }
         }
     }
 
-    if(numFlashlights == 2){
-      huntersFinished++;
-      numFlashlights = 0; 
-
-      //setValueSentOnAllFaces(5);
-    }
-    if(huntersFinished == 2){
-        huntersTurn = false;
-        hidersTurn = true;  
-    }
-
     
   }
-  if (hidersTurn) {
+  if(inbetweenTurns){
+
     
+    if(flashlightSpot && hidersInSpot > 0){
+      setColor(BLUE);
+    //  inbetweenTurns = false;
+      //hidersTurn = true;
+    }  
+    else if(!flashlightSpot && huntersInSpot == 0){
+      setColor(GREEN);  
+    }
+
+    if(huntersInSpot > 0 && hidersInSpot > 0){
+      
+      setColor(MAGENTA);
+      //Hunters win
+      if(hidersCaught == 1){
+        
+        setValueSentOnAllFaces(50);
+        gameOver(false);  
+        inbetweenTurns = false;
+      }  
+      
+      //Only one caught
+      else{
+        hidersInSpot = 0;
+        hidersCaught = 1;
+        setValueSentOnAllFaces(40);
+       // inbetweenTurns = false;
+       // hidersTurn = true;
+      }
+    }
+
+    if(buttonPressed()){
+      setValueSentOnAllFaces(30);
+      inbetweenTurns = false;
+      hidersTurn = true;
+    }
+    FOREACH_FACE(f){
+        if (!isValueReceivedOnFaceExpired(f)) {
+          if (didValueOnFaceChange(f)) {
+            int valOnFace = getLastValueReceivedOnFace(f);
+
+            if(valOnFace == 30){
+                inbetweenTurns = false;
+                hidersTurn = true;
+                setValueSentOnAllFaces(30);
+              }
+
+              else if(valOnFace == 40){
+                hidersCaught = 1;
+                setValueSentOnAllFaces(40);
+              }
+              else if(valOnFace == 50){
+                hidersCaught = 2;
+                gameOver(false);
+                inbetweenTurns = false;
+                setValueSentOnAllFaces(50);
+              }
+          }
+       }
+    }
+  }
+  
+  if (hidersTurn) {
+    if (hidersInSpot == 0 && huntersInSpot == 0 && !possibleHiderMovement) {//empty space
+      setColor(GREEN);
+    }
+    else if (huntersInSpot > 0) {//Hunter space
+      setColor(RED);
+    }
+    else if(hidersInSpot > 0){
+      setColor(BLUE);  
+    }
+    else if (possibleHiderMovement) {//possible Movement
+      setColor(ORANGE);
+    }
+
+    if(buttonPressed()){
+      if(hidersInSpot > 0 && !anyHidersChoosing){
+        hiderSelected = true; //note that this is a selected hider
+        anyHidersChoosing = true;
+        setValueSentOnAllFaces(0);  
+      }
+
+      else if(possibleHiderMovement){
+        hidersInSpot = 1;
+
+        if(hidersMoved == 2){
+          setValueSentOnAllFaces(2);
+          hidersMoved = 1;
+            
+        }
+        
+        else if(hidersMoved == 1){
+          setValueSentOnAllFaces(20);
+          hidersMoved = 0;
+            
+        }
+      }
+    }
+
+     FOREACH_FACE(f){
+        if (!isValueReceivedOnFaceExpired(f)) {
+          if (didValueOnFaceChange(f)) {
+            int valOnFace = getLastValueReceivedOnFace(f);
+
+            if(valOnFace == 0 && hidersInSpot == 0 && huntersInSpot == 0){
+                possibleHiderMovement = true;
+                anyHidersChoosing = true;
+                setValueSentOnAllFaces(1);
+            }
+
+            if(valOnFace == 1){
+              anyHidersChoosing = true;  
+            }
+
+            if(valOnFace == 2){
+              if(hiderSelected){
+                 hiderSelected = false;
+                 hidersInSpot = 0;
+              }
+              anyHidersChoosing = false;
+              hidersMoved = 1;
+              possibleHiderMovement = false;
+              setValueSentOnAllFaces(2);
+            }
+
+            if(valOnFace == 20){
+                if(hiderSelected){
+                  hiderSelected = false;
+                  hidersInSpot = 0;
+                }
+                hidersMoved = 0;
+                anyHidersChoosing = false;
+                possibleHiderMovement = false;
+                hidersTurn = false;
+                finishingTurn = true;
+                
+                hunterSelected = false;
+                movementMade = false;
+                possibleFlashlight = false;
+                flashlightSpot = false;
+                numFlashlights = 0;
+                huntersFinished = 0;
+                possibleMovement = false;
+                anyHunterChoosing = false;
+                possibleHiderMovement = false;
+                anyHidersChoosing = false;
+                hiderSelected = false;
+                hidersMoved = 2;
+
+                setValueSentOnAllFaces(20);
+
+            }
+
+            
+          }
+        }
+     }
+
+  }
+
+  if(finishingTurn){
+    turnsLeft--;
+    finishingTurn = false;
+    if(turnsLeft == 0){
+      gameOver(true);  
+    }  
+    else{
+      huntersTurn = true;  
+    }
   }
 }
 
@@ -330,3 +585,13 @@ void wipeBoard(int red, int green, int blue) {
   setColor(makeColorRGB(red, green, blue));
   setValueSentOnAllFaces(35);
 }
+
+void gameOver(boolean winner){
+    if(winner){
+      setColor(BLUE);
+    }
+    else{
+      setColor(RED);
+    }
+      
+  }
