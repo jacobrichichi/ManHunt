@@ -1,9 +1,9 @@
-
 //#include "Serial.h"
 
 //ServicePortSerial sp;
 
 #define PULSE_LENGTH 500
+#define PULSE_LENGTH2 800
 
 boolean setUp = true;
 boolean huntersSetup = false;
@@ -39,7 +39,7 @@ boolean possibleHiderMovement = false;
 boolean anyHidersChoosing = false;
 boolean hiderSelected = false;
 int hidersMoved = 2;
-int turnsLeft = 5;
+int turnsLeft = 8;
 
 
 Timer timer;
@@ -55,6 +55,16 @@ void setup() {
 
 
 void loop() {
+  int pulseProgress = millis() % PULSE_LENGTH;
+  int pulseProgress2 = millis() % PULSE_LENGTH2;
+
+  //transform that progress to a byte (0-255)
+  byte pulseMapped = map(pulseProgress, 0, PULSE_LENGTH, 0, 255);
+  byte pulseMapped2 = map(pulseProgress2, 0, PULSE_LENGTH2, 0, 255);
+
+  //transform that byte with sin
+  byte dimness = sin8_C(pulseMapped);
+  byte saturation = sin8_C(pulseMapped2);
 
   // Set up phase creates a completely green board
   if (setUp) {
@@ -76,7 +86,7 @@ void loop() {
       if (currentRole == 0) {
 
         currentRole += 1;
-        setColor(MAGENTA);
+        setColor(makeColorHSB(0, 255, dimness));   
         possibles += 1;
         setValueSentOnAllFaces(possibles);
       }
@@ -93,6 +103,9 @@ void loop() {
     }
 
     else {
+      if (currentRole==1){
+        setColor(makeColorHSB(0, 255, dimness));  
+      }
       for (int i = 0; i < 6; i++) {
 
         if (!isValueReceivedOnFaceExpired(i)) {
@@ -140,7 +153,7 @@ void loop() {
       if (currentRole != 2 && currentRoleHiders == 0) {
 
         currentRoleHiders += 1;
-        setColor(WHITE);
+        setColor(makeColorHSB(170, 255, dimness));   
         possiblesHiders += 1;
         setValueSentOnAllFaces(possiblesHiders);
       }
@@ -158,6 +171,9 @@ void loop() {
     }
 
     else {
+      if (currentRoleHiders == 1){
+        setColor(makeColorHSB(170, 255, dimness));  
+      }
       for (int i = 0; i < 6; i++) {
 
         if (!isValueReceivedOnFaceExpired(i)) {
@@ -220,26 +236,18 @@ void loop() {
     }
 
     else if(possibleFlashlight){
-       int pulseProgress = millis() % PULSE_LENGTH;
-
-      //transform that progress to a byte (0-255)
-      byte pulseMapped = map(pulseProgress, 0, PULSE_LENGTH, 0, 255);
-
-      //transform that byte with sin
-      byte dimness = sin8_C(pulseMapped);
-      
       setColor(makeColorHSB(172, 0, dimness));   
     }
+    
     else if(possibleMovement){
-      int pulseProgress = millis() % PULSE_LENGTH;
-
-      //transform that progress to a byte (0-255)
-      byte pulseMapped = map(pulseProgress, 0, PULSE_LENGTH, 0, 255);
-
-      //transform that byte with sin
-      byte dimness = sin8_C(pulseMapped);
       
       setColor(makeColorHSB(30, 255, dimness)); 
+    }
+
+    if(buttonMultiClicked()){
+       if(buttonClickCount() == 4){
+        setValueSentOnAllFaces(10); 
+       }
     }
 
     if (buttonPressed()) {
@@ -336,7 +344,7 @@ void loop() {
                 
                 possibleMovement = true;
                 setValueSentOnAllFaces(11);
-                setColor(ORANGE);
+                setColor(makeColorHSB(30, 255, dimness));   
             }
 
             
@@ -499,7 +507,7 @@ void loop() {
       setColor(BLUE);  
     }
     else if (possibleHiderMovement) {//possible Movement
-      setColor(ORANGE);
+      setColor(makeColorHSB(30, 255, dimness));   
     }
 
     if(buttonPressed()){
@@ -632,3 +640,4 @@ void gameOver(boolean winner){
     }
       
   }
+ 
